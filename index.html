@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Agenda</title>
+
+<!-- Instalação como app (iPhone, Mac) -->
+<meta name="application-name" content="Agenda">
+<meta name="apple-mobile-web-app-title" content="Agenda">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0d12">
+<meta name="color-scheme" content="dark">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+
+<style>
+:root{
+  --bg:#0b0d12; --sup:#12151d; --sup2:#1a1f2b; --linha:#1c212c;
+  --txt:#eef0f5; --txt2:#a3aabb; --txt3:#7b8296;
+  --acc:#8ab4ff; --acc-forte:#aecbff; --acc-bg:rgba(138,180,255,.11);
+  --erro:#ff9d9d;
+  --fonte:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --lat-e:calc(16px + env(safe-area-inset-left));
+  --lat-d:calc(16px + env(safe-area-inset-right));
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+html{background:var(--bg);color-scheme:dark;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{
+  font-family:var(--fonte);color:var(--txt);background:var(--bg);min-width:280px;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* ---------- estrutura ---------- */
+#app{height:100vh;height:100dvh;display:flex;flex-direction:column;max-width:560px;margin:0 auto}
+
+.topo{padding:calc(14px + env(safe-area-inset-top)) var(--lat-d) 12px var(--lat-e);flex:none}
+.rotulo{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--txt2);min-height:18px}
+.rotulo .rel{color:var(--acc);font-weight:650}
+.rotulo .sep{color:var(--txt3)}
+h1{margin:2px 0 0;font-size:clamp(22px,7.2vw,28px);line-height:1.15;font-weight:700;letter-spacing:-.02em}
+
+.barra{display:flex;align-items:center;gap:8px;margin-top:12px}
+.ib{
+  position:relative;width:38px;height:38px;flex:none;display:inline-grid;place-items:center;padding:0;
+  border-radius:11px;border:1px solid var(--linha);background:var(--sup);color:var(--txt);cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+.ib svg{width:18px;height:18px;pointer-events:none}
+.ib:hover{background:var(--sup2);border-color:#2a3140}
+.ib:active{transform:scale(.96)}
+.cal{margin-left:4px}
+.cal:focus-within{outline:2px solid var(--acc);outline-offset:2px}
+/* o seletor de data nativo fica invisível por cima do botão do calendário */
+.cal input{
+  position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer;
+  -webkit-appearance:none;appearance:none;background:transparent;color:transparent;font-size:16px;
+}
+.cal input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;cursor:pointer}
+.cal.por-codigo{cursor:pointer}
+.cal.por-codigo input{pointer-events:none}
+.hoje{
+  margin-left:auto;height:38px;padding:0 15px;border-radius:11px;border:1px solid var(--linha);
+  background:var(--sup);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer;
+  transition:background .15s,border-color .15s,opacity .15s;
+}
+.hoje:hover{background:var(--sup2);border-color:#2a3140}
+.hoje:disabled{opacity:.38;cursor:default;background:var(--sup);border-color:var(--linha)}
+
+/* ---------- lista ---------- */
+main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:2px calc(var(--lat-d) - 8px) 14px calc(var(--lat-e) - 8px);border-top:1px solid var(--linha)}
+#lista{list-style:none;margin:0;padding:6px 0 0}
+.ev{position:relative;display:grid;grid-template-columns:62px minmax(0,1fr);column-gap:12px;align-items:start;padding:12px 8px;border-radius:12px}
+.ev + .ev::before{content:"";position:absolute;top:0;left:8px;right:8px;height:1px;background:var(--linha)}
+.ev.agora::before,.ev.agora + .ev::before{display:none}
+.hora{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2;font-variant-numeric:tabular-nums;padding-top:1px}
+.ini{font-size:15px;font-weight:650;letter-spacing:.01em}
+.fim,.mini{font-size:12px;color:var(--txt3);margin-top:3px}
+.mini{margin:0 0 2px}
+.pilula{font-size:11px;font-weight:650;line-height:1;padding:5px 8px;border-radius:999px;background:var(--sup2);color:var(--txt2);white-space:nowrap;margin-top:1px}
+.corpo{min-width:0}
+.titulo{display:block;font-size:15.5px;line-height:1.36;font-weight:500;overflow-wrap:anywhere}
+.tag{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px;color:var(--txt2)}
+.tag .quando{font-weight:500;letter-spacing:.01em;text-transform:none;color:var(--txt3)}
+.ponto{width:6px;height:6px;border-radius:50%;background:var(--acc);animation:pulso 2s ease-in-out infinite}
+
+.ev.agora{background:var(--acc-bg);box-shadow:inset 3px 0 0 var(--acc);margin:2px 0}
+.ev.agora .ini,.ev.agora .tag{color:var(--acc-forte)}
+.ev.agora .fim{color:var(--txt2)}
+.ev.agora .titulo{font-weight:600}
+.ev.proximo .ini{color:var(--txt)}
+.ev.passado{opacity:.42}
+
+/* ---------- estados (vazio, erro, carregando) ---------- */
+.estado{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:44px 18px 24px;color:var(--txt2)}
+.estado svg{width:40px;height:40px;color:var(--txt3);margin-bottom:14px}
+.estado strong{display:block;color:var(--txt);font-size:16px;font-weight:650;margin-bottom:5px}
+.estado p{margin:0;font-size:14px;line-height:1.5;max-width:300px}
+.estado code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--txt);background:var(--sup2);padding:1px 5px;border-radius:5px}
+.estado button{margin-top:16px;height:38px;padding:0 16px;border-radius:11px;border:1px solid var(--linha);background:var(--sup);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
+.osso{display:grid;grid-template-columns:62px 1fr;column-gap:12px;padding:14px 8px}
+.osso i{display:block;height:13px;border-radius:6px;background:linear-gradient(90deg,var(--sup) 0%,var(--sup2) 50%,var(--sup) 100%);background-size:200% 100%;animation:brilho 1.4s linear infinite}
+.osso i:first-child{width:42px}
+
+/* ---------- rodapé ---------- */
+.rodape{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px var(--lat-d) calc(8px + env(safe-area-inset-bottom)) var(--lat-e);border-top:1px solid var(--linha);font-size:12px;color:var(--txt3)}
+.rodape button{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:6px 2px;color:inherit;font-size:12px;cursor:pointer;border-radius:6px}
+.rodape button:hover{color:var(--txt2)}
+.rodape svg{width:12px;height:12px;flex:none}
+.rodape .girando svg{animation:giro .9s linear infinite}
+.rodape .aviso{color:var(--erro)}
+
+/* ---------- tela de senha ---------- */
+#login{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));overflow:auto}
+.cartao{width:100%;max-width:320px;text-align:center}
+.cartao img{width:64px;height:64px;border-radius:16px;display:block;margin:0 auto 16px}
+.cartao h2{margin:0 0 6px;font-size:22px;font-weight:700;letter-spacing:-.02em}
+.cartao p{margin:0 0 20px;font-size:14px;line-height:1.5;color:var(--txt2)}
+.cartao input{
+  width:100%;height:48px;padding:0 14px;border-radius:12px;border:1px solid #2a3140;background:var(--sup);
+  color:var(--txt);font-family:inherit;font-size:16px;text-align:center;outline:none;transition:border-color .15s;
+}
+.cartao input:focus{border-color:var(--acc)}
+.cartao button{width:100%;height:48px;margin-top:10px;border-radius:12px;border:0;background:var(--acc);color:#0b1220;font-size:15.5px;font-weight:700;cursor:pointer}
+.cartao button:disabled{opacity:.6;cursor:default}
+.cartao .msg{min-height:20px;margin:12px 0 0;font-size:13.5px;color:var(--erro)}
+
+@keyframes pulso{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes brilho{to{background-position:-200% 0}}
+@keyframes giro{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.ponto,.osso i,.rodape .girando svg{animation:none}}
+@media (max-width:340px){
+  .ev{grid-template-columns:56px minmax(0,1fr);column-gap:10px}
+  .osso{grid-template-columns:56px 1fr;column-gap:10px}
+  .titulo{font-size:15px}
+}
+</style>
+
+<link rel="icon" type="image/png" sizes="192x192" href="data:image/png;base64,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">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
+</head>
+<body>
+
+<div id="app" hidden>
+  <header class="topo">
+    <div class="rotulo" id="rotulo"></div>
+    <h1 id="titulo-data"></h1>
+    <div class="barra">
+      <button class="ib" id="btn-ant" type="button" aria-label="Dia anterior" title="Dia anterior">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <button class="ib" id="btn-prox" type="button" aria-label="Próximo dia" title="Próximo dia">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+      <label class="ib cal" title="Escolher data">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+        <input type="date" id="seletor" aria-label="Escolher data">
+      </label>
+      <button class="hoje" id="btn-hoje" type="button">Hoje</button>
+    </div>
+  </header>
+
+  <main id="rolagem">
+    <ul id="lista" aria-live="polite"></ul>
+  </main>
+
+  <footer class="rodape">
+    <button type="button" id="btn-atualizar" title="Atualizar agora">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 6.3M20 4v7h-7"/></svg>
+      <span id="status"></span>
+    </button>
+    <button type="button" id="btn-sair" title="Esquecer a senha neste aparelho">sair</button>
+  </footer>
+</div>
+
+<div id="login" hidden>
+  <form class="cartao" id="form-login" autocomplete="off">
+    <img id="login-icone" alt="">
+    <h2>Agenda</h2>
+    <p>Digite a senha para ver seus compromissos.</p>
+    <input type="password" id="campo-senha" placeholder="Senha" aria-label="Senha" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+    <button type="submit" id="btn-entrar">Entrar</button>
+    <div class="msg" id="login-msg" role="alert"></div>
+  </form>
+</div>
+
+<noscript><p style="padding:24px;font-family:sans-serif;color:#eef0f5">Este painel precisa de JavaScript ativado.</p></noscript>
+
+<script>
+/* ============================================================
+   CONFIGURAÇÃO — cole aqui a URL do Web App do Apps Script
+   (termina em /exec). É a única coisa que precisa trocar.
+   ============================================================ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbwxPFjH69wqbAj5LkfHdRJ0hXV839U3LdhuaV3AB9etl8IMZRJGtPUdaGuh9guNVL8a/exec';
+
+const FUSO = 'America/Sao_Paulo';        // mesmo fuso do servidor
+const ATUALIZAR_A_CADA = 5 * 60 * 1000;  // 5 minutos
+const VOLTAR_PRA_HOJE_APOS = 5 * 60 * 1000; // janela escondida por mais que isso reabre em "hoje"
+const CHAVE_SENHA = 'painelAgenda.senha';
+
+/* ---------- datas (sempre AAAA-MM-DD, no fuso de São Paulo) ---------- */
+const fmtPartes = new Intl.DateTimeFormat('en-US', { timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit' });
+const fmtSemana = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC', weekday: 'long' });
+const fmtDiaMes = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC', day: 'numeric', month: 'long' });
+const fmtHora = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit', hour12: false });
+
+function hoje() {
+  const p = {};
+  fmtPartes.formatToParts(new Date()).forEach(x => { p[x.type] = x.value; });
+  return p.year + '-' + p.month + '-' + p.day;
+}
+// Uma data "pura" vira meio-dia UTC: nenhum fuso do aparelho consegue empurrá-la para o dia vizinho.
+function comoUTC(data) {
+  const [a, m, d] = data.split('-').map(Number);
+  return new Date(Date.UTC(a, m - 1, d, 12));
+}
+function somarDias(data, n) {
+  const d = comoUTC(data);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function diasEntre(a, b) {
+  return Math.round((comoUTC(b) - comoUTC(a)) / 86400000);
+}
+function dataValida(s) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(comoUTC(s)) && comoUTC(s).toISOString().slice(0, 10) === s;
+}
+
+/* ---------- estado ---------- */
+const $ = id => document.getElementById(id);
+const cache = new Map();          // data -> { eventos, quando }
+let dataSel = hoje();
+let ultimoHoje = dataSel;
+let pedidoAtual = 0;
+let carregando = false;
+let erroAtual = '';
+let escondidoDesde = 0;
+let assinatura = '';
+let rolarAoMostrar = true;
+
+const configurado = /^https:\/\/script\.google(usercontent)?\.com\//.test(API_URL) || /^(\/|https?:\/\/(localhost|127\.0\.0\.1))/.test(API_URL);
+
+/* ---------- senha (fica só neste aparelho) ---------- */
+function lerSenha() { try { return localStorage.getItem(CHAVE_SENHA) || ''; } catch (e) { return senhaMemoria; } }
+function guardarSenha(s) { senhaMemoria = s; try { localStorage.setItem(CHAVE_SENHA, s); } catch (e) {} }
+function esquecerSenha() { senhaMemoria = ''; try { localStorage.removeItem(CHAVE_SENHA); } catch (e) {} }
+let senhaMemoria = '';
+
+/* ---------- servidor ---------- */
+// text/plain é um Content-Type "simples": o navegador não faz preflight (OPTIONS),
+// que o Apps Script não responde. Sem cabeçalhos extras e sem cookies.
+async function chamar(senha, data) {
+  const ctrl = new AbortController();
+  const limite = setTimeout(() => ctrl.abort(), 25000);
+  let resp;
+  try {
+    resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ senha: senha, data: data }),
+      redirect: 'follow',
+      credentials: 'omit',
+      cache: 'no-store',
+      signal: ctrl.signal
+    });
+  } catch (e) {
+    throw new Error(ctrl.signal.aborted ? 'O servidor demorou para responder.' : 'Sem conexão com o servidor.');
+  } finally {
+    clearTimeout(limite);
+  }
+  const texto = await resp.text();
+  try { return JSON.parse(texto); }
+  catch (e) { throw new Error('Resposta inesperada do servidor. Confira a URL do Web App.'); }
+}
+
+async function carregar() {
+  if (!configurado) { render(true); return; }
+  const senha = lerSenha();
+  if (!senha) { mostrarLogin(''); return; }
+
+  const data = dataSel;
+  const id = ++pedidoAtual;
+  carregando = true;
+  render(true);
+
+  try {
+    const r = await chamar(senha, data);
+    if (id !== pedidoAtual) return;           // o usuário já mudou de dia: descarta
+    if (!r || r.ok !== true) {
+      if (r && r.erro === 'senha') {
+        carregando = false;
+        esquecerSenha();
+        cache.clear();
+        mostrarLogin('Senha incorreta. Digite novamente.');
+        return;
+      }
+      throw new Error((r && r.mensagem) || 'O servidor devolveu um erro.');
+    }
+    cache.set(data, { eventos: Array.isArray(r.eventos) ? r.eventos : [], quando: Date.now() });
+    erroAtual = '';
+  } catch (e) {
+    if (id !== pedidoAtual) return;
+    erroAtual = e.message || 'Não foi possível atualizar.';
+  }
+  carregando = false;
+  render(true);
+}
+
+/* ---------- desenho ---------- */
+function el(tag, classe, texto) {
+  const n = document.createElement(tag);
+  if (classe) n.className = classe;
+  if (texto != null) n.textContent = texto;
+  return n;
+}
+const ICONES = {
+  livre: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>',
+  erro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>',
+  ajuste: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>'
+};
+function estado(icone, titulo, texto, botao) {
+  const li = el('li', 'estado');
+  li.innerHTML = ICONES[icone];               // SVG fixo do próprio arquivo
+  li.appendChild(el('strong', '', titulo));
+  const p = el('p');
+  if (typeof texto === 'string') p.textContent = texto; else p.appendChild(texto);
+  li.appendChild(p);
+  if (botao) {
+    const b = el('button', '', botao);
+    b.type = 'button';
+    b.addEventListener('click', carregar);
+    li.appendChild(b);
+  }
+  return li;
+}
+
+function emQuanto(ms) {
+  const min = Math.max(1, Math.round(ms / 60000));
+  if (min < 60) return 'em ' + min + ' min';
+  const h = Math.floor(min / 60), m = min % 60;
+  return 'em ' + h + ' h' + (m ? ' ' + String(m).padStart(2, '0') : '');
+}
+
+// Agora / A seguir / já passou — só faz sentido quando o dia mostrado é hoje.
+function situacoes(eventos, ehHoje, agora) {
+  if (!ehHoje) return eventos.map(() => ({ classe: '', tag: '', quando: '' }));
+  let proximoInicio = Infinity;
+  eventos.forEach(ev => {
+    if (!ev.diaTodo && ev.inicioMs > agora && ev.inicioMs < proximoInicio) proximoInicio = ev.inicioMs;
+  });
+  return eventos.map(ev => {
+    if (ev.diaTodo) return { classe: '', tag: '', quando: '' };
+    if (ev.fimMs <= agora && ev.inicioMs <= agora && !(ev.inicioMs === ev.fimMs && agora - ev.inicioMs < 60000)) {
+      return { classe: 'passado', tag: '', quando: '' };
+    }
+    if (ev.inicioMs <= agora) return { classe: 'agora', tag: 'Agora', quando: '' };
+    if (ev.inicioMs === proximoInicio) return { classe: 'proximo', tag: 'A seguir', quando: emQuanto(ev.inicioMs - agora) };
+    return { classe: '', tag: '', quando: '' };
+  });
+}
+
+function linha(ev, sit) {
+  const li = el('li', 'ev' + (sit.classe ? ' ' + sit.classe : ''));
+  const hora = el('div', 'hora');
+  if (ev.diaTodo) {
+    hora.appendChild(el('span', 'pilula', 'Dia todo'));
+  } else if (ev.comecaAntes) {
+    hora.appendChild(el('span', 'mini', 'até'));
+    hora.appendChild(el('span', 'ini', ev.fim));
+  } else {
+    hora.appendChild(el('span', 'ini', ev.inicio));
+    if (ev.terminaDepois) hora.appendChild(el('span', 'fim', 'continua'));
+    else if (ev.fim && ev.fimMs !== ev.inicioMs) hora.appendChild(el('span', 'fim', ev.fim));
+  }
+  const corpo = el('div', 'corpo');
+  if (sit.tag) {
+    const tag = el('span', 'tag');
+    if (sit.classe === 'agora') tag.appendChild(el('i', 'ponto'));
+    tag.appendChild(document.createTextNode(sit.tag));
+    if (sit.quando) tag.appendChild(el('span', 'quando', '· ' + sit.quando));
+    corpo.appendChild(tag);
+  }
+  corpo.appendChild(el('span', 'titulo', ev.titulo || '(Sem título)'));
+  li.appendChild(hora);
+  li.appendChild(corpo);
+  return li;
+}
+
+function render(forcar) {
+  const hj = hoje();
+  const ehHoje = dataSel === hj;
+  const dif = diasEntre(hj, dataSel);
+  const reg = cache.get(dataSel);
+  const agora = Date.now();
+  const sits = reg ? situacoes(reg.eventos, ehHoje, agora) : [];
+
+  // Só redesenha se algo mudou (evita piscar a cada conferência do relógio).
+  const nova = JSON.stringify([dataSel, hj, carregando, erroAtual, reg ? reg.quando : 0, sits]);
+  if (!forcar && nova === assinatura) return;
+  assinatura = nova;
+
+  /* cabeçalho */
+  const d = comoUTC(dataSel);
+  const semana = fmtSemana.format(d);
+  let diaMes = fmtDiaMes.format(d);
+  if (dataSel.slice(0, 4) !== hj.slice(0, 4)) diaMes += ' de ' + dataSel.slice(0, 4);
+  const rel = dif === 0 ? 'Hoje' : dif === 1 ? 'Amanhã' : dif === -1 ? 'Ontem' : '';
+  const rotulo = $('rotulo');
+  rotulo.replaceChildren();
+  if (rel) {
+    rotulo.appendChild(el('span', 'rel', rel));
+    rotulo.appendChild(el('span', 'sep', '·'));
+  }
+  rotulo.appendChild(el('span', '', semana));
+  $('titulo-data').textContent = diaMes;
+  $('titulo-data').setAttribute('aria-label', semana + ', ' + diaMes);
+  $('seletor').value = dataSel;
+  $('btn-hoje').disabled = ehHoje;
+  document.title = ehHoje ? 'Agenda' : 'Agenda · ' + diaMes;
+
+  /* lista */
+  const lista = $('lista');
+  lista.replaceChildren();
+  if (!configurado) {
+    const p = document.createDocumentFragment();
+    p.appendChild(document.createTextNode('Cole a URL do Web App na constante '));
+    p.appendChild(el('code', '', 'API_URL'));
+    p.appendChild(document.createTextNode(', no topo do script deste arquivo.'));
+    lista.appendChild(estado('ajuste', 'Falta um ajuste', p));
+  } else if (!reg && erroAtual) {
+    lista.appendChild(estado('erro', 'Não consegui carregar', erroAtual, 'Tentar de novo'));
+  } else if (!reg) {
+    for (let i = 0; i < 4; i++) {
+      const o = el('li', 'osso');
+      const a = el('i'), b = el('i');
+      b.style.width = [72, 54, 64, 40][i] + '%';
+      o.appendChild(a); o.appendChild(b);
+      lista.appendChild(o);
+    }
+  } else if (!reg.eventos.length) {
+    lista.appendChild(ehHoje
+      ? estado('livre', 'Dia livre', 'Nenhum compromisso na agenda de hoje. Aproveite!')
+      : estado('livre', 'Nada marcado', 'Nenhum compromisso na agenda neste dia.'));
+  } else {
+    reg.eventos.forEach((ev, i) => lista.appendChild(linha(ev, sits[i])));
+    if (rolarAoMostrar && ehHoje) {
+      const alvo = lista.querySelector('.agora, .proximo');
+      if (alvo) alvo.scrollIntoView({ block: 'nearest' });
+    }
+    rolarAoMostrar = false;
+  }
+
+  /* rodapé */
+  const status = $('status');
+  const btn = $('btn-atualizar');
+  btn.classList.toggle('girando', carregando);
+  status.classList.toggle('aviso', !carregando && !!erroAtual && !!reg);
+  if (!configurado) status.textContent = 'Aguardando configuração';
+  else if (carregando) status.textContent = 'Atualizando…';
+  else if (erroAtual && reg) status.textContent = 'Sem conexão · dados das ' + fmtHora.format(reg.quando);
+  else if (reg) status.textContent = 'Atualizado às ' + fmtHora.format(reg.quando);
+  else status.textContent = 'Não atualizado';
+}
+
+/* ---------- navegação ---------- */
+function irPara(data) {
+  if (!dataValida(data) || data === dataSel) return;
+  dataSel = data;
+  erroAtual = '';
+  rolarAoMostrar = true;
+  $('rolagem').scrollTop = 0;
+  carregar();
+}
+function irParaHoje() {
+  const hj = hoje();
+  if (dataSel === hj) { carregar(); return; }
+  irPara(hj);
+}
+
+/* ---------- tela de senha ---------- */
+function mostrarLogin(msg) {
+  $('app').hidden = true;
+  $('login').hidden = false;
+  $('login-msg').textContent = msg || '';
+  $('btn-entrar').disabled = false;
+  $('btn-entrar').textContent = 'Entrar';
+  const campo = $('campo-senha');
+  campo.value = '';
+  setTimeout(() => campo.focus(), 50);
+}
+function mostrarApp() {
+  $('login').hidden = true;
+  $('app').hidden = false;
+}
+async function entrar(ev) {
+  ev.preventDefault();
+  const senha = $('campo-senha').value.trim();
+  if (!senha) return;
+  const btn = $('btn-entrar');
+  btn.disabled = true;
+  btn.textContent = 'Entrando…';
+  $('login-msg').textContent = '';
+  try {
+    const data = hoje();
+    const r = await chamar(senha, data);
+    if (r && r.ok === true) {
+      guardarSenha(senha);                    // só guarda depois que o servidor aceitou
+      dataSel = data;
+      cache.set(data, { eventos: Array.isArray(r.eventos) ? r.eventos : [], quando: Date.now() });
+      erroAtual = '';
+      carregando = false;
+      rolarAoMostrar = true;
+      mostrarApp();
+      render(true);
+      return;
+    }
+    $('login-msg').textContent = r && r.erro === 'senha' ? 'Senha incorreta.' : ((r && r.mensagem) || 'O servidor devolveu um erro.');
+  } catch (e) {
+    $('login-msg').textContent = e.message || 'Não foi possível entrar.';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Entrar';
+  $('campo-senha').select();
+}
+function sair() {
+  esquecerSenha();
+  cache.clear();
+  pedidoAtual++;
+  carregando = false;
+  erroAtual = '';
+  mostrarLogin('');
+}
+
+/* ---------- manifesto embutido (instalar como app) ---------- */
+function instalarManifesto() {
+  try {
+    if (!/^https?:$/.test(location.protocol)) return;
+    const base = location.origin + location.pathname;
+    const icone192 = document.querySelector('link[rel="icon"]').href;
+    const manifesto = {
+      name: 'Agenda', short_name: 'Agenda', lang: 'pt-BR',
+      id: base, start_url: base, scope: base.replace(/[^/]*$/, ''),
+      display: 'standalone', background_color: '#0b0d12', theme_color: '#0b0d12',
+      icons: [
+        { src: icone192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: window.ICONE_512, sizes: '512x512', type: 'image/png', purpose: 'any' }
+      ]
+    };
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifesto));
+    document.head.appendChild(link);
+  } catch (e) {}
+}
+
+/* ---------- partida ---------- */
+function iniciar() {
+  instalarManifesto();
+  $('login-icone').src = document.querySelector('link[rel="apple-touch-icon"]').href;
+
+  $('btn-ant').addEventListener('click', () => irPara(somarDias(dataSel, -1)));
+  $('btn-prox').addEventListener('click', () => irPara(somarDias(dataSel, 1)));
+  $('btn-hoje').addEventListener('click', irParaHoje);
+  $('btn-atualizar').addEventListener('click', carregar);
+  $('btn-sair').addEventListener('click', sair);
+  $('form-login').addEventListener('submit', entrar);
+  // Calendário: no celular o toque cai direto no seletor nativo (invisível sobre o botão);
+  // no computador o botão abre o calendário por código.
+  const seletor = $('seletor');
+  const abrePorCodigo = typeof seletor.showPicker === 'function' && !matchMedia('(pointer: coarse)').matches;
+  if (abrePorCodigo) {
+    const abrir = () => { try { seletor.showPicker(); } catch (err) { seletor.focus(); } };
+    seletor.parentElement.classList.add('por-codigo');
+    seletor.parentElement.addEventListener('click', e => { e.preventDefault(); abrir(); });
+    seletor.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } });
+  }
+  seletor.addEventListener('change', e => {
+    if (e.target.value) irPara(e.target.value); else irParaHoje();   // "limpar" no seletor volta pra hoje
+    if (abrePorCodigo) seletor.blur();
+  });
+  document.addEventListener('keydown', e => {
+    if ($('app').hidden || e.metaKey || e.ctrlKey || e.altKey || e.target.tagName === 'INPUT') return;
+    if (e.key === 'ArrowLeft') irPara(somarDias(dataSel, -1));
+    else if (e.key === 'ArrowRight') irPara(somarDias(dataSel, 1));
+    else if (e.key === 'h' || e.key === 'H') irParaHoje();
+  });
+
+  // A cada 5 minutos, se a janela estiver visível.
+  setInterval(() => { if (!document.hidden && !$('app').hidden) carregar(); }, ATUALIZAR_A_CADA);
+
+  // Relógio: troca o "agora / a seguir" e vira o dia à meia-noite sem buscar nada.
+  setInterval(() => {
+    if (document.hidden || $('app').hidden) return;
+    const hj = hoje();
+    if (hj !== ultimoHoje) {
+      const seguia = dataSel === ultimoHoje;
+      ultimoHoje = hj;
+      if (seguia) { irPara(hj); return; }
+    }
+    render(false);
+  }, 20000);
+
+  // Quando a janela volta a ficar visível: atualiza. Se ficou muito tempo fora, reabre em hoje.
+  function voltou() {
+    if (document.hidden || $('app').hidden) return;
+    const fora = escondidoDesde ? Date.now() - escondidoDesde : 0;
+    escondidoDesde = 0;
+    const hj = hoje();
+    const seguia = dataSel === ultimoHoje;
+    ultimoHoje = hj;
+    if (dataSel !== hj && (seguia || fora >= VOLTAR_PRA_HOJE_APOS)) { irPara(hj); return; }
+    carregar();
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) escondidoDesde = Date.now(); else voltou();
+  });
+  window.addEventListener('pageshow', e => { if (e.persisted) voltou(); });
+  window.addEventListener('online', () => { if (!document.hidden && !$('app').hidden) carregar(); });
+
+  if (configurado && !lerSenha()) { mostrarLogin(''); return; }
+  mostrarApp();
+  carregar();
+}
+document.addEventListener('DOMContentLoaded', iniciar);
+</script>
+
+<!-- Ícone 512 px do app (usado pelo manifesto embutido). Não precisa mexer. -->
+<script>window.ICONE_512 = 'data:image/png;base64,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';</script>
+</body>
+</html>
